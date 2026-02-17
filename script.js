@@ -6,6 +6,7 @@ const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const settingsBtn = document.getElementById('settings-btn');
+const newChatBtn = document.getElementById('new-chat-btn');
 const settingsModal = document.getElementById('settings-modal');
 const closeModal = document.getElementById('close-modal');
 const customDropdown = document.getElementById('custom-theme-dropdown');
@@ -14,21 +15,17 @@ const dropdownOptions = customDropdown.querySelector('.dropdown-options');
 const apiKeyInput = document.getElementById('api-key-input');
 const saveSettingsBtn = document.getElementById('save-settings');
 
-// Initialize State
 let currentTheme = localStorage.getItem('theme') || 'light';
 let customApiKey = localStorage.getItem('apiKey') || '';
 
-// Apply Initial state to controls
 updateDropdownUI(currentTheme);
 apiKeyInput.value = customApiKey;
 
-// Theme Toggle (Icon)
 themeToggle.addEventListener('click', () => {
     currentTheme = currentTheme === 'light' ? 'dark' : 'light';
     applyTheme(currentTheme);
 });
 
-// Custom Dropdown Logic
 customDropdown.addEventListener('click', (e) => {
     e.stopPropagation();
     customDropdown.classList.toggle('active');
@@ -43,7 +40,6 @@ dropdownOptions.addEventListener('click', (e) => {
     }
 });
 
-// Close dropdown on outside click
 window.addEventListener('click', () => {
     customDropdown.classList.remove('active');
 });
@@ -56,13 +52,11 @@ function applyTheme(theme) {
 
 function updateDropdownUI(theme) {
     selectedThemeText.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
-    // Update selected class in options
     dropdownOptions.querySelectorAll('.option').forEach(opt => {
         opt.classList.toggle('selected', opt.dataset.value === theme);
     });
 }
 
-// Modal Logic
 settingsBtn.addEventListener('click', () => {
     settingsModal.style.display = 'flex';
 });
@@ -84,13 +78,27 @@ saveSettingsBtn.addEventListener('click', () => {
     alert('Settings saved!');
 });
 
-// Auto-resize textarea
-userInput.addEventListener('input', () => {
-    userInput.style.height = 'auto';
-    userInput.style.height = userInput.scrollHeight + 'px';
+newChatBtn.addEventListener('click', () => {
+    messagesContainer.innerHTML = `
+        <div class="message ai-message">
+            <div class="ai-label">Leo</div>
+            <div class="message-content">Hello! How can I help you today?</div>
+        </div>
+    `;
+    userInput.focus();
 });
 
-// Handle send on Enter
+userInput.addEventListener('input', () => {
+    userInput.style.height = 'auto';
+    userInput.style.height = Math.min(userInput.scrollHeight, 200) + 'px';
+    
+    if (userInput.value.trim()) {
+        sendBtn.disabled = false;
+    } else {
+        sendBtn.disabled = true;
+    }
+});
+
 userInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -116,7 +124,6 @@ async function sendMessage() {
         let responseText = '';
 
         if (customApiKey) {
-            // Direct Browser Call (BYOK)
             const genAI = new GoogleGenerativeAI(customApiKey);
             const model = genAI.getGenerativeModel({
                 model: "gemini-2.5-flash",
@@ -126,7 +133,6 @@ async function sendMessage() {
             const response = await result.response;
             responseText = response.text();
         } else {
-            // Backend Fallback
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -145,7 +151,6 @@ async function sendMessage() {
         console.error('Chat error:', error);
     } finally {
         userInput.disabled = false;
-        sendBtn.disabled = false;
         userInput.focus();
     }
 }
@@ -153,10 +158,19 @@ async function sendMessage() {
 function appendMessage(sender, text) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', `${sender}-message`);
+    
+    if (sender === 'ai') {
+        const labelDiv = document.createElement('div');
+        labelDiv.classList.add('ai-label');
+        labelDiv.textContent = 'Leo';
+        messageDiv.appendChild(labelDiv);
+    }
+    
     const contentDiv = document.createElement('div');
     contentDiv.classList.add('message-content');
     contentDiv.textContent = text;
     messageDiv.appendChild(contentDiv);
+    
     messagesContainer.appendChild(messageDiv);
     scrollToBottom();
 }
@@ -166,13 +180,21 @@ function showTypingIndicator() {
     const id = 'typing-' + Date.now();
     typingDiv.id = id;
     typingDiv.classList.add('message', 'ai-message');
-    typingDiv.innerHTML = `
-        <div class="typing">
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-        </div>
+    
+    const labelDiv = document.createElement('div');
+    labelDiv.classList.add('ai-label');
+    labelDiv.textContent = 'Leo';
+    typingDiv.appendChild(labelDiv);
+    
+    const typingContent = document.createElement('div');
+    typingContent.classList.add('typing');
+    typingContent.innerHTML = `
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
     `;
+    typingDiv.appendChild(typingContent);
+    
     messagesContainer.appendChild(typingDiv);
     scrollToBottom();
     return id;
